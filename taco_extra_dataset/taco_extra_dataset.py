@@ -1,6 +1,7 @@
 from typing import Iterator, Tuple, Any
 
 import copy
+import os
 import cv2
 import glob
 import h5py
@@ -8,33 +9,33 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 import tensorflow_datasets as tfds
-from aloha_static_dataset.conversion_utils import MultiThreadedDatasetBuilder
+from taco_extra_dataset.conversion_utils import MultiThreadedDatasetBuilder
 
 
 FILE_PATH = '/nfs/kun2/datasets/taco/taco_extra_processed_15hz_resize'
 
 
-def _generate_examples(ids_and_annotations) -> Iterator[Tuple[str, Any]]:
+def _generate_examples(paths) -> Iterator[Tuple[str, Any]]:
     """Yields episodes for list of data paths."""
 
     def _parse_example(ids, annotation):
         episode = []
         for i, id in enumerate(range(ids[0], ids[1]+1)):
             try:
-                data = np.load(os.path.join(FILE_PATH, f'episode_{id}.npz'))
+                data = np.load(os.path.join(FILE_PATH, f'episode_{id:07}.npz'))
             except:
-                print(f"Failed to load {os.path.join(FILE_PATH, f'episode_{id}.npz')}")
+                print(f"Failed to load {os.path.join(FILE_PATH, f'episode_{id:07}.npz')}")
                 return None
 
             episode.append({
                 'observation': {
                     'rgb_static': data['rgb_static'],
                     'rgb_gripper': data['rgb_gripper'],
-                    'robot_obs': data['robot_obs'],
+                    'robot_obs': np.asarray(data['robot_obs'], dtype=np.float32),
                     'natural_language_instruction': annotation,
                 },
                 'action': {
-                    'actions': data['actions'],
+                    'actions': np.asarray(data['actions'], dtype=np.float32),
                 },
                 'discount': 1.0,
                 'reward': float(i == (ids[1]-ids[0] - 1)),
@@ -54,7 +55,7 @@ def _generate_examples(ids_and_annotations) -> Iterator[Tuple[str, Any]]:
         return str(ids), sample
 
     # for smallish datasets, use single-thread parsing
-    for ids, annotation in ids_and_annotations:
+    for ids, annotation in paths:
         yield _parse_example(ids, annotation)
 
 
@@ -84,7 +85,7 @@ class TacoExtra(MultiThreadedDatasetBuilder):
                             doc='RGB camera observation.',
                         ),
                         'rgb_gripper': tfds.features.Image(
-                            shape=(150, 200, 3),
+                            shape=(200, 200, 3),
                             dtype=np.uint8,
                             encoding_format='jpeg',
                             doc='RGB gripper camera observation.',
