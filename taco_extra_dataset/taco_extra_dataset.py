@@ -36,6 +36,7 @@ def _generate_examples(paths) -> Iterator[Tuple[str, Any]]:
                 },
                 'action': {
                     'actions': np.asarray(data['actions'], dtype=np.float32),
+                    'rel_actions_world': np.asarray(data['rel_actions_world'], dtype=np.float32),
                 },
                 'discount': 1.0,
                 'reward': float(i == (ids[1]-ids[0] - 1)),
@@ -105,6 +106,13 @@ class TacoExtra(MultiThreadedDatasetBuilder):
                             shape=(7,),
                             dtype=np.float32,
                             doc='absolute desired values for gripper pose '
+                                '(first 6 dimensions are x, y, z, yaw, pitch, roll), '
+                                'last dimension is open_gripper (-1 is open gripper, 1 is close).',
+                        ),
+                        'rel_actions_world': tfds.features.Tensor(
+                            shape=(7,),
+                            dtype=np.float32,
+                            doc='relative actions for gripper pose in the robot base frame '
                                 '(first 6 dimensions are x, y, z, yaw, pitch, roll), '
                                 'last dimension is open_gripper (-1 is open gripper, 1 is close).',
                         ),
